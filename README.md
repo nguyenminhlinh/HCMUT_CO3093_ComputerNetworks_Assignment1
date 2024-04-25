@@ -1,11 +1,10 @@
 # HCMUT_CO3093_ComputerNetworks_Assignment1
 # `Peer-to-Peer File-Sharing Application`
-Computer Networking (CO3093) - Semester 232 - HCMUT
 
 ## Overview
-Build a Simple Like-torrent application with application protocols defined by each group, using the 
-TCP/IP protocol stack
+Build a Simple Like-torrent application with application protocols defined by each group, using the TCP/IP protocol stack.
 
+All descriptions and reports are included in the documentation
 ## Requirements 
 - Python 3
 - PostgreSQL installed on the Server machine 
