@@ -15,12 +15,12 @@ cur = conn.cursor()
 def log_event(message):
     logging.info(message)
 
-def update_client_info(peers_ip,peers_port,peers_hostname,file_name,piece_hash,num_order_in_file):
+def update_client_info(peers_ip,peers_port,peers_hostname,file_name,file_size,piece_hash,piece_size,num_order_in_file):
     # Update the client's file list in the database
     for i in range(len(num_order_in_file)):
         cur.execute(
-            "INSERT INTO peers (peers_ip,peers_port,peers_hostname,file_name,piece_hash,num_order_in_file) VALUES (%s, %s, %s, %s, %s, %s)",
-            (peers_ip,peers_port,peers_hostname,file_name,piece_hash[i],num_order_in_file[i])
+            "INSERT INTO peers (peers_ip,peers_port,peers_hostname,file_name,file_size,piece_hash,piece_size,num_order_in_file) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (peers_ip,peers_port,peers_hostname,file_name,file_size,piece_hash[i],piece_size,num_order_in_file[i])
         )
     conn.commit()
 
@@ -32,7 +32,7 @@ def client_handler(conn, addr):
 
         while True:
             data = conn.recv(4096).decode()
-            log_event(f"Received data from {addr}: {data}")
+            # log_event(f"Received data from {addr}: {data}")
             if not data:
                 break
 
@@ -42,7 +42,9 @@ def client_handler(conn, addr):
             peers_port = command['peers_port']
             peers_hostname = command['peers_hostname']
             file_name = command['file_name'] if 'file_name' in command else ""
+            file_size = command['file_size'] if 'file_size' in command else ""
             piece_hash = command['piece_hash'] if 'piece_hash' in command else ""
+            piece_size = command['piece_size'] if 'piece_size' in command else ""
             num_order_in_file = command['num_order_in_file'] if 'num_order_in_file' in command else ""
 
             if command.get('action') == 'introduce':
@@ -53,19 +55,18 @@ def client_handler(conn, addr):
             elif command['action'] == 'publish':
                 # peers_ip,peers_port,peers_hostname,file_name,piece_hash
                 log_event(f"Updating client info in database for hostname: {peers_hostname}/{peers_ip}:{peers_port}")
-                update_client_info(peers_ip,peers_port, peers_hostname,file_name, piece_hash,num_order_in_file)  # addr[0] is the IP address
+                update_client_info(peers_ip,peers_port, peers_hostname,file_name,file_size, piece_hash,piece_size,num_order_in_file)  # addr[0] is the IP address
                 log_event(f"Database update complete for hostname: {peers_hostname}/{peers_ip}:{peers_port}")
                 conn.sendall("File list updated successfully.".encode())
 
             elif command['action'] == 'fetch':
-                print("fetch",file_name, num_order_in_file, piece_hash)
+                # print("fetch",file_name, num_order_in_file, piece_hash)
                 # Query the database for the IP addresses of the clients that have the file
                 cur.execute("SELECT * FROM peers WHERE file_name = %s AND num_order_in_file <> ALL (%s) AND piece_hash <> ALL (%s)", (file_name, num_order_in_file, piece_hash))
                 results = cur.fetchall()
-                print("re",results)
                 if results:
                     # Create a list of dictionaries with 'hostname' and 'ip' keys
-                    peers_info = [{'peers_ip': peers_ip, 'peers_port': peers_port, 'peers_hostname': peers_hostname, 'file_name':file_name,'piece_hash':piece_hash,'num_order_in_file':num_order_in_file } for peers_ip, peers_port, peers_hostname, file_name, piece_hash, num_order_in_file  in results if peers_hostname in active_connections]
+                    peers_info = [{'peers_ip': peers_ip, 'peers_port': peers_port, 'peers_hostname': peers_hostname, 'file_name':file_name,'file_size':file_size,'piece_hash':piece_hash,'piece_size':piece_size,'num_order_in_file':num_order_in_file } for peers_ip, peers_port, peers_hostname, file_name,file_size, piece_hash,piece_size, num_order_in_file  in results if peers_hostname in active_connections]
                     conn.sendall(json.dumps({'peers_info': peers_info}).encode())
                 else:
                     conn.sendall(json.dumps({'error': 'File not available'}).encode())
@@ -94,7 +95,6 @@ def request_file_list_from_client(peers_hostname):
         request = {'action': 'request_file_list'}
         peer_sock.sendall(json.dumps(request).encode() + b'\n')
         response = json.loads(peer_sock.recv(4096).decode())
-        print(response)
         peer_sock.close()
         if 'files' in response:
             return response['files']
@@ -120,7 +120,6 @@ def ping_host(peers_hostname):
         request = {'action': 'ping'}
         peer_sock.sendall(json.dumps(request).encode() + b'\n')
         response = peer_sock.recv(4096).decode()
-        print(response)
         peer_sock.close()
         if response:
             print(f"{peers_hostname} is online!")

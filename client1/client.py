@@ -70,7 +70,7 @@ def check_local_piece_files(file_name):
     else:
         return False
 
-def handle_publish_piece(sock, peers_port, pieces, file_name):
+def handle_publish_piece(sock, peers_port, pieces, file_name,file_size,piece_size):
     pieces_hash = create_pieces_string(pieces)
     user_input_num_piece = input( f"File {file_name} have {pieces}\n piece: {pieces_hash}. \nPlease select num piece in file to publish:" )
     num_order_in_file = shlex.split(user_input_num_piece) 
@@ -80,16 +80,18 @@ def handle_publish_piece(sock, peers_port, pieces, file_name):
         index = pieces.index(f"{file_name}_piece{i}")
         piece_hash.append(pieces_hash[index])
         print (f"Number {i} : {pieces_hash[index]}")
-    publish_piece_file(sock,peers_port,file_name, piece_hash,num_order_in_file)
+    publish_piece_file(sock,peers_port,file_name,file_size, piece_hash,piece_size,num_order_in_file)
 
-def publish_piece_file(sock, peers_port, file_name, piece_hash, num_order_in_file):
+def publish_piece_file(sock,peers_port,file_name,file_size, piece_hash,piece_size,num_order_in_file):
     peers_hostname = socket.gethostname()
     command = {
         "action": "publish",
         "peers_port": peers_port,
         "peers_hostname":peers_hostname,
         "file_name":file_name,
+        "file_size":file_size,
         "piece_hash":piece_hash,
+        "piece_size":piece_size,
         "num_order_in_file":num_order_in_file,
     }
     # shared_piece_files_dir.append(command)
@@ -126,27 +128,27 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
         "peers_hostname":peers_hostname,
         "file_name":file_name,
         "piece_hash":piece_hash,
-        "num_order_in_file":num_order_in_file
+        "num_order_in_file":num_order_in_file,
     } 
     # command = {"action": "fetch", "fname": fname}
     sock.sendall(json.dumps(command).encode() + b'\n')
     response = json.loads(sock.recv(4096).decode())
     if 'peers_info' in response:
         peers_info = response['peers_info']
-        # {peers_hostname}/{peers_ip}:{peers_port}
-        i=1
-        host_info_str = "\n".join([f"Number: {++i} {peer_info['peers_hostname']}/{peer_info['peers_ip']}:{peer_info['peers_port']} piece_hash: {peer_info['piece_hash']  } num_order_in_file: {peer_info['num_order_in_file'] }" for peer_info in peers_info])
+        host_info_str = "\n".join([f"Number: {peer_info['num_order_in_file'] } {peer_info['peers_hostname']}/{peer_info['peers_ip']}:{peer_info['peers_port']} piece_hash: {peer_info['piece_hash']  } num_order_in_file: {peer_info['num_order_in_file'] }" for peer_info in peers_info])
         print(f"Hosts with the file {file_name}:\n{host_info_str}")
         if len(peers_info) >= 1:
             chosen_info = input("Enter the number of the host to download from: ")
             chosen_info_part = shlex.split(chosen_info) 
             # Find the host entry with the chosen IP to get the corresponding lname
             for i in chosen_info_part:
-                chosen_peer = peers_info[int(i)-1]
-            if chosen_peer:
-                request_file_from_peer(chosen_peer['peers_ip'], chosen_peer['peers_port'], chosen_peer['file_name'],chosen_peer['piece_hash'],chosen_peer['num_order_in_file'])
-            else:
-                print("Invalid number entered.")
+                index = next((j for j, peer_info in enumerate(peers_info) if peer_info.get('num_order_in_file') == i), None)
+                if index is not None:
+                    request_file_from_peer(peers_info[index]['peers_ip'], peers_info[index]['peers_port'], peers_info[index]['file_name'],peers_info[index]['piece_hash'],peers_info[index]['num_order_in_file'])
+                else:
+                     print(f"Invalid number entered: {i}")
+            if(peers_info['file_size']/peers_info['file_size']==len( sorted(pieces := check_local_piece_files(file_name)))):
+                merge_pieces_into_file(pieces,file_name)
         else:
             print("No hosts have the file.")
     else:
@@ -212,11 +214,12 @@ def main(server_host, server_port, peers_port):
             if len(command_parts) == 2 and command_parts[0].lower() == 'publish':
                 _,file_name = command_parts
                 if check_local_files(file_name):
-                    piece_length = 524288  # 524288 byte = 512KB
-                    pieces = split_file_into_pieces(file_name,piece_length)
-                    handle_publish_piece(sock, peers_port, pieces, file_name)
+                    piece_size = 524288  # 524288 byte = 512KB
+                    file_size = os.path.getsize(file_name)
+                    pieces = split_file_into_pieces(file_name,piece_size)
+                    handle_publish_piece(sock, peers_port, pieces, file_name,file_size,piece_size)
                 elif (pieces := check_local_piece_files(file_name)):
-                    handle_publish_piece(sock, peers_port, pieces, file_name)
+                    handle_publish_piece(sock, peers_port, pieces, file_name,file_size,piece_size)
                 else:
                     print(f"Local file {file_name}/piece does not exist.")
             elif len(command_parts) == 2 and command_parts[0].lower() == 'fetch':
