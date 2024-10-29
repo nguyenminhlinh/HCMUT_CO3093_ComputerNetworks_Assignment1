@@ -4,7 +4,6 @@ import os
 import threading
 import shlex
 import hashlib
-import math
 
 stop_event = threading.Event()
 
@@ -44,7 +43,7 @@ def merge_pieces_into_file(pieces, output_file_path):
             with open(piece_file_path, "rb") as piece_file:
                 piece_data = piece_file.read()
                 output_file.write(piece_data)
-    print("Got all the parts and created the file",output_file_path)
+                
 
 def get_list_local_files(directory='.'):
     try:
@@ -116,7 +115,7 @@ def request_file_from_peer(peers_ip, peer_port, file_name, piece_hash, num_order
                 f.write(data)
 
         peer_sock.close()
-        print(f"Piece of file: {file_name}_piece{num_order_in_file} has been fetched from peer.")
+        print(f"Piece of file: {file_name}_piece{num_order_in_file} has been fetched from peer{peers_ip}:{peer_port}.")
     except Exception as e:
         print(f"An error occurred while connecting to peer at {peers_ip}:{peer_port} - {e}")
     finally:
@@ -140,7 +139,8 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
         host_info_str = "\n".join([f"Number: {peer_info['num_order_in_file'] } {peer_info['peers_hostname']}/{peer_info['peers_ip']}:{peer_info['peers_port']} piece_hash: {peer_info['piece_hash']  } num_order_in_file: {peer_info['num_order_in_file'] }" for peer_info in peers_info])
         print(f"Hosts with the file {file_name}:\n{host_info_str}")
         if len(peers_info) >= 1:
-            num_of_piece = 5 #example
+            num_of_piece=int(int(peers_info[1]['file_size'])/524288)+1
+            print(num_of_piece)
             list_piece_dont_have=[]
             num_order_in_file_int = [int(x) for x in num_order_in_file]
             for i in range (1,num_of_piece+1):
@@ -161,29 +161,23 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
             dict_list_piece_dont_have=dict(sorted(dict_list_piece_dont_have.items(),key=lambda x:x[1]))
             
             for num_piece in dict_list_piece_dont_have:
-                print("*",num_piece,type(num_piece))
                 min_count=100 #max
                 # ip_min_count=""
                 port_min_count=""
+                hash_min_count=""
                 flag_one_client_have=True
                 for peer_info in peers_info:
-                    print("6")
-                    print(peer_info['num_order_in_file'],type(peer_info['num_order_in_file']))
-                    print(dict_list_piece_dont_have[int(num_piece)],type(dict_list_piece_dont_have[num_piece]))
                     if int(peer_info['num_order_in_file'])==int(num_piece) and dict_list_piece_dont_have[int(num_piece)]==1 :
                         # dict_list_client_ip[peer_info['peers_ip']]=dict_list_client_ip[peer_info['peers_ip']]+1
                         dict_list_client_port[peer_info['peers_port']]=dict_list_client_port[peer_info['peers_port']]+1
                         # ip=peer_info['peers_ip']
                         port=peer_info['peers_port']
                         hash=peer_info['piece_hash']
-                        print(hash)
 
                         # index = next((j for j, peer_info in enumerate(peers_info) if peer_info.get('peers_ip') == ip), None)
                         index = next((j for j, peer_info in enumerate(peers_info) if peer_info.get('peers_port') == port and str(peer_info.get('piece_hash'))==str(hash)) , None)
-                        print(index)
+                    
                         if index is not None:
-                            # print(ip,index)
-                            print(port,index)
                             request_file_from_peer(peers_info[index]['peers_ip'], peers_info[index]['peers_port'], peers_info[index]['file_name'],peers_info[index]['piece_hash'],peers_info[index]['num_order_in_file'])
                             continue
                     elif int(peer_info['num_order_in_file'])==num_piece:
@@ -194,22 +188,23 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
                         if min_count>dict_list_client_port[peer_info['peers_port']]:
                             min_count=dict_list_client_port[peer_info['peers_port']]
                             port_min_count=peer_info['peers_port']
+                            hash_min_count=peer_info['piece_hash']
                             flag_one_client_have=False 
-                print("7")  
                 if not flag_one_client_have:      
-                    index = next((j for j, peer_info in enumerate(peers_info) if peer_info.get('peers_port') == port_min_count), None)
+                    index = next((j for j, peer_info in enumerate(peers_info) if peer_info.get('peers_port') == port_min_count and str(peer_info.get('piece_hash'))==str(hash_min_count)), None)
                     if index is not None:
-                        print("8")
-                        dict_list_client_port[peers_info[index]['peers_port'],]=dict_list_client_port[peers_info[index]['peers_port'],]+1
+                        dict_list_client_port[peers_info[index]['peers_port']]=dict_list_client_port[peers_info[index]['peers_port']]+1
                         request_file_from_peer(peers_info[index]['peers_ip'], peers_info[index]['peers_port'], peers_info[index]['file_name'],peers_info[index]['piece_hash'],peers_info[index]['num_order_in_file'])
-                        print(peers_info[index]['peers_port'])
         
-            # if(peers_info['file_size']/peers_info['file_size']==len( sorted(pieces := check_local_piece_files(file_name)))):
-            #     merge_pieces_into_file(pieces,file_name)
+            if num_of_piece == len( sorted(pieces := check_local_piece_files(file_name))):
+                merge_pieces_into_file(pieces,file_name)
+                print(f"Create file {file_name} successful")
+            else:
+                print(f"Not enough piece to create file {file_name}")
         else:
             print("No hosts have the file.")
     else:
-        print("No peers have the file or the response format is incorrect.")
+        print("No peers have the file or you had this file.")
 
 def send_piece_to_client(conn, piece):
     with open(piece, 'rb') as f:
@@ -301,5 +296,5 @@ if __name__ == "__main__":
     # Replace with your server's IP address and port number
     SERVER_HOST = '192.168.56.1'
     SERVER_PORT = 65432
-    CLIENT_PORT = 65434
+    CLIENT_PORT = 65435
     main(SERVER_HOST, SERVER_PORT,CLIENT_PORT)

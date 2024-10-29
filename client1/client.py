@@ -138,17 +138,72 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
         host_info_str = "\n".join([f"Number: {peer_info['num_order_in_file'] } {peer_info['peers_hostname']}/{peer_info['peers_ip']}:{peer_info['peers_port']} piece_hash: {peer_info['piece_hash']  } num_order_in_file: {peer_info['num_order_in_file'] }" for peer_info in peers_info])
         print(f"Hosts with the file {file_name}:\n{host_info_str}")
         if len(peers_info) >= 1:
-            chosen_info = input("Enter the number of the host to download from: ")
-            chosen_info_part = shlex.split(chosen_info) 
-            # Find the host entry with the chosen IP to get the corresponding lname
-            for i in chosen_info_part:
-                index = next((j for j, peer_info in enumerate(peers_info) if peer_info.get('num_order_in_file') == i), None)
-                if index is not None:
-                    request_file_from_peer(peers_info[index]['peers_ip'], peers_info[index]['peers_port'], peers_info[index]['file_name'],peers_info[index]['piece_hash'],peers_info[index]['num_order_in_file'])
-                else:
-                     print(f"Invalid number entered: {i}")
-            if(peers_info['file_size']/peers_info['file_size']==len( sorted(pieces := check_local_piece_files(file_name)))):
-                merge_pieces_into_file(pieces,file_name)
+            num_of_piece = 5 #example
+            list_piece_dont_have=[]
+            num_order_in_file_int = [int(x) for x in num_order_in_file]
+            for i in range (1,num_of_piece+1):
+                if i not in num_order_in_file_int:
+                    list_piece_dont_have.append(i)
+
+            dict_list_piece_dont_have=dict.fromkeys(list_piece_dont_have,0)
+            # dict_list_client_ip={}
+            dict_list_client_port={}
+
+            for peer_info in peers_info:
+                # print(dict_list_piece_dont_have[1])
+                # print(dict_list_piece_dont_have['1'])
+                dict_list_piece_dont_have[int(peer_info['num_order_in_file'])]=dict_list_piece_dont_have[int(peer_info['num_order_in_file'])]+1
+                # dict_list_client_ip[peer_info['peers_ip']]=0
+                dict_list_client_port[peer_info['peers_port']]=0
+
+            dict_list_piece_dont_have=dict(sorted(dict_list_piece_dont_have.items(),key=lambda x:x[1]))
+            
+            for num_piece in dict_list_piece_dont_have:
+                print("*",num_piece,type(num_piece))
+                min_count=100 #max
+                # ip_min_count=""
+                port_min_count=""
+                flag_one_client_have=True
+                for peer_info in peers_info:
+                    print("6")
+                    print(peer_info['num_order_in_file'],type(peer_info['num_order_in_file']))
+                    print(dict_list_piece_dont_have[int(num_piece)],type(dict_list_piece_dont_have[num_piece]))
+                    if int(peer_info['num_order_in_file'])==int(num_piece) and dict_list_piece_dont_have[int(num_piece)]==1 :
+                        # dict_list_client_ip[peer_info['peers_ip']]=dict_list_client_ip[peer_info['peers_ip']]+1
+                        dict_list_client_port[peer_info['peers_port']]=dict_list_client_port[peer_info['peers_port']]+1
+                        # ip=peer_info['peers_ip']
+                        port=peer_info['peers_port']
+                        hash=peer_info['piece_hash']
+                        print(hash)
+
+                        # index = next((j for j, peer_info in enumerate(peers_info) if peer_info.get('peers_ip') == ip), None)
+                        index = next((j for j, peer_info in enumerate(peers_info) if peer_info.get('peers_port') == port and str(peer_info.get('piece_hash'))==str(hash)) , None)
+                        print(index)
+                        if index is not None:
+                            # print(ip,index)
+                            print(port,index)
+                            request_file_from_peer(peers_info[index]['peers_ip'], peers_info[index]['peers_port'], peers_info[index]['file_name'],peers_info[index]['piece_hash'],peers_info[index]['num_order_in_file'])
+                            continue
+                    elif int(peer_info['num_order_in_file'])==num_piece:
+                        # if min_count>dict_list_client_ip[peer_info['peers_ip']]:
+                        #     min_count=dict_list_client_ip[peer_info['peers_ip']]
+                        #     ip_min_count=peer_info['peers_ip']
+                        #     flag_one_client_have=False 
+                        if min_count>dict_list_client_port[peer_info['peers_port']]:
+                            min_count=dict_list_client_port[peer_info['peers_port']]
+                            port_min_count=peer_info['peers_port']
+                            flag_one_client_have=False 
+                print("7")  
+                if not flag_one_client_have:      
+                    index = next((j for j, peer_info in enumerate(peers_info) if peer_info.get('peers_port') == port_min_count), None)
+                    if index is not None:
+                        print("8")
+                        dict_list_client_port[peers_info[index]['peers_port'],]=dict_list_client_port[peers_info[index]['peers_port'],]+1
+                        request_file_from_peer(peers_info[index]['peers_ip'], peers_info[index]['peers_port'], peers_info[index]['file_name'],peers_info[index]['piece_hash'],peers_info[index]['num_order_in_file'])
+                        print(peers_info[index]['peers_port'])
+        
+            # if(peers_info['file_size']/peers_info['file_size']==len( sorted(pieces := check_local_piece_files(file_name)))):
+            #     merge_pieces_into_file(pieces,file_name)
         else:
             print("No hosts have the file.")
     else:
