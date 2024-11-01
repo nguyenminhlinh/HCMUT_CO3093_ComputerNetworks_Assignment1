@@ -140,7 +140,7 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
         print(f"Hosts with the file {file_name}:\n{host_info_str}")
         if len(peers_info) >= 1:
             num_of_piece=int(int(peers_info[1]['file_size'])/524288)+1
-            print(num_of_piece)
+            # print(num_of_piece)
             list_piece_dont_have=[]
             num_order_in_file_int = [int(x) for x in num_order_in_file]
             for i in range (1,num_of_piece+1):
@@ -159,6 +159,7 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
                 dict_list_client_port[peer_info['peers_port']]=0
 
             dict_list_piece_dont_have=dict(sorted(dict_list_piece_dont_have.items(),key=lambda x:x[1]))
+            list_piece_id_download=[]
             
             for num_piece in dict_list_piece_dont_have:
                 min_count=100 #max
@@ -179,6 +180,7 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
                     
                         if index is not None:
                             request_file_from_peer(peers_info[index]['peers_ip'], peers_info[index]['peers_port'], peers_info[index]['file_name'],peers_info[index]['piece_hash'],peers_info[index]['num_order_in_file'])
+                            list_piece_id_download.append(int(num_piece))
                             continue
                     elif int(peer_info['num_order_in_file'])==num_piece:
                         # if min_count>dict_list_client_ip[peer_info['peers_ip']]:
@@ -194,9 +196,17 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
                     index = next((j for j, peer_info in enumerate(peers_info) if peer_info.get('peers_port') == port_min_count and str(peer_info.get('piece_hash'))==str(hash_min_count)), None)
                     if index is not None:
                         dict_list_client_port[peers_info[index]['peers_port']]=dict_list_client_port[peers_info[index]['peers_port']]+1
+                        list_piece_id_download.append(int(num_piece))
                         request_file_from_peer(peers_info[index]['peers_ip'], peers_info[index]['peers_port'], peers_info[index]['file_name'],peers_info[index]['piece_hash'],peers_info[index]['num_order_in_file'])
-        
-            if num_of_piece == len( sorted(pieces := check_local_piece_files(file_name))):
+            
+            list_piece_name_download=[]
+            for i in list_piece_id_download:
+                list_piece_name_download.append(file_name+"_piece"+str(i))
+            piece_hash = create_pieces_string(list_piece_name_download)
+            publish_piece_file(sock,peers_port,file_name,peers_info[1]['file_size'], piece_hash,peers_info[1]['piece_size'],list_piece_id_download)
+            # print(list_piece_name_download)
+            # print(piece_hash)
+            if num_of_piece == len((pieces := sorted(check_local_piece_files(file_name)))):
                 merge_pieces_into_file(pieces,file_name)
                 print(f"Create file {file_name} successful")
             else:
