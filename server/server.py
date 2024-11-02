@@ -70,6 +70,18 @@ def client_handler(conn, addr):
                     conn.sendall(json.dumps({'peers_info': peers_info}).encode())
                 else:
                     conn.sendall(json.dumps({'error': 'File not available'}).encode())
+                    
+            elif command['action'] == 'info':
+                # print("fetch",file_name, num_order_in_file, piece_hash)
+                # Query the database for the IP addresses of the clients that have the file
+                cur.execute("SELECT * FROM peers WHERE file_name = %s", (file_name,))
+                results = cur.fetchall()
+                if results:
+                    # Create a list of dictionaries with 'hostname' and 'ip' keys
+                    peers_info = [{'peers_ip': peers_ip, 'peers_port': peers_port, 'peers_hostname': peers_hostname, 'file_name':file_name,'file_size':file_size,'piece_hash':piece_hash,'piece_size':piece_size,'num_order_in_file':num_order_in_file } for peers_ip, peers_port, peers_hostname, file_name,file_size, piece_hash,piece_size, num_order_in_file  in results if peers_hostname in active_connections]
+                    conn.sendall(json.dumps({'peers_info': peers_info}).encode())
+                else:
+                    conn.sendall(json.dumps({'error': 'File not available'}).encode())
 
             elif command['action'] == 'file_list':
                 files = command['files']
@@ -81,6 +93,7 @@ def client_handler(conn, addr):
         if client_peers_hostname:
             del active_connections[client_peers_hostname]  
         conn.close()
+        cur.execute("DELETE FROM peers WHERE peers_port = %s", (str(addr[1]),))
         log_event(f"Connection with {addr} has been closed.")
 
 def request_file_list_from_client(peers_hostname):
@@ -162,7 +175,7 @@ def start_server(host='0.0.0.0', port=65432):
             # log_event(f"Accepted connection from {addr}, hostname is {host}")
             thread = threading.Thread(target=client_handler, args=(conn, addr))
             thread.start()
-            log_event(f"Active connections: {threading.active_count() - 1}")
+            log_event(f"Active connections: {threading.active_count() - 2}")
     except KeyboardInterrupt:
         log_event("Server shutdown requested.")
     finally:
