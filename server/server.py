@@ -46,8 +46,9 @@ def client_handler(conn, addr,Flag_stop):
                 command = json.loads(data)
 
                 peers_ip = addr[0]
-                peers_port = command['peers_port'] if 'peers_port' in command else ""
-                peers_port_current = command['peers_port'] if 'peers_port' in command else ""
+                if command.get('action') != 'check':
+                    peers_port = command['peers_port'] 
+                    peers_port_current = command['peers_port'] 
                 peers_hostname = command['peers_hostname'] if 'peers_hostname' in command else ""
                 file_name = command['file_name'] if 'file_name' in command else ""
                 file_size = command['file_size'] if 'file_size' in command else ""
@@ -76,6 +77,7 @@ def client_handler(conn, addr,Flag_stop):
                     cur.execute("SELECT * FROM peers WHERE file_name = %s AND num_order_in_file <> ALL (%s) AND piece_hash <> ALL (%s)", (file_name, num_order_in_file, piece_hash))
                     results = cur.fetchall()
                     if results:
+                        # print(active_connections)
                         # Create a list of dictionaries with 'hostname' and 'ip' keys
                         peers_info = [{'peers_ip': peers_ip, 'peers_port': peers_port, 'peers_hostname': peers_hostname, 'file_name':file_name,'file_size':file_size,'piece_hash':piece_hash,'piece_size':piece_size,'num_order_in_file':num_order_in_file } for peers_ip, peers_port, peers_hostname, file_name,file_size, piece_hash,piece_size, num_order_in_file  in results if str(peers_port) in active_connections]
                         conn.sendall(json.dumps({'peers_info': peers_info}).encode())
@@ -106,7 +108,7 @@ def client_handler(conn, addr,Flag_stop):
         logging.exception(f"An error occurred while handling client {addr[0]}:{peers_port_current}: {e}")
     finally:
         if peers_port:
-            del active_connections[str(peers_port)]  
+            del active_connections[str(peers_port)] 
         conn.close()
         log_event(f"Connection with {addr[0]}:{peers_port_current} has been closed.")
 
