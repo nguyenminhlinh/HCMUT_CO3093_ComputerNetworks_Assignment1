@@ -4,6 +4,7 @@ import os
 import threading
 import shlex
 import hashlib
+import time
 
 stop_event = threading.Event()
 
@@ -115,7 +116,7 @@ def request_file_from_peer(peers_ip, peer_port, file_name, piece_hash, num_order
                 f.write(data)
 
         peer_sock.close()
-        print(f"Piece of file: {file_name}_piece{num_order_in_file} has been fetched from peer{peers_ip}:{peer_port}.")
+        print(f"Piece of file: {file_name}_piece{num_order_in_file} has been fetched from peer {peers_ip}:{peer_port}.")
     except Exception as e:
         print(f"An error occurred while connecting to peer at {peers_ip}:{peer_port} - {e}")
     finally:
@@ -256,22 +257,54 @@ def start_host_service(port, shared_files_dir):
     server_sock.close()
 
 def connect_to_server(server_host, server_port, peers_port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((server_host, server_port))
-    peers_hostname = socket.gethostname()
-    sock.sendall(json.dumps({'action': 'introduce', 'peers_hostname': peers_hostname, 'peers_port':peers_port }).encode() + b'\n')
-    return sock
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((server_host, server_port))
+        peers_hostname = socket.gethostname()
+        host_service_thread = threading.Thread(target=start_host_service, args=(peers_port, './'))
+        host_service_thread.start()
+        sock.sendall(json.dumps({'action': 'introduce', 'peers_hostname': peers_hostname, 'peers_port': peers_port}).encode() + b'\n')
+        return sock,host_service_thread
+    except (socket.error, ConnectionRefusedError) as e:
+        print(f"Unable to connect to server: {e}")
+        return None,None
 
+def check_server(sock):
+    while True:
+        time.sleep(5)  # Kiểm tra mỗi 5 giây
+        try:
+            # Gửi một thông điệp kiểm tra
+            command = {
+                    "action": "check",
+                } 
+            sock.sendall(json.dumps(command).encode() + b'\n')                    
+            response = sock.recv(4096).decode()
+            if 'ServerOn' not in response:
+                print("Server is not responding.")
+                break
+        except socket.error:
+            break
+        
 def main(server_host, server_port, peers_port):
-    host_service_thread = threading.Thread(target=start_host_service, args=(peers_port, './'))
-    host_service_thread.start()
-
     # Connect to the server
-    sock = connect_to_server(server_host, server_port,peers_port)
+    
+    sock,host_service_thread = connect_to_server(server_host, server_port,peers_port)
+    if sock==None:
+        return
 
+    # check_server_thread = threading.Thread(target=check_server, args=(sock,))
+    # check_server_thread.start()
+    
     try:
         while True:
             user_input = input("Enter command (publish file_name file_name2/ fetch file_name file_name2/ exit): ")#addr[0],peers_port, peers_hostname,file_name, piece_hash,num_order_in_file
+            command = {
+                    "action": "check",
+                } 
+            sock.sendall(json.dumps(command).encode() + b'\n')                    
+            sock.recv(4096).decode()
+            # sock.sendall("check".encode())                    
+            # response = sock.recv(4096).decode()
             command_parts = shlex.split(user_input)
             if len(command_parts) == 2 and command_parts[0].lower() == 'publish':
                 _,file_name = command_parts
@@ -314,10 +347,13 @@ def main(server_host, server_port, peers_port):
                 break
             else:
                 print("Invalid command.")
-
+    except socket.error:
+        print("The server is not online")
     finally:
             sock.close()
+            stop_event.set()
             host_service_thread.join()
+
 
 
 if __name__ == "__main__":
