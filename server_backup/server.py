@@ -4,6 +4,9 @@ import threading
 import json
 import psycopg2
 import sys
+import os
+import time
+import subprocess
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -27,76 +30,85 @@ def update_client_info(peers_ip,peers_port,peers_hostname,file_name,file_size,pi
 active_connections = {}  
 host_files = {}
 
-def client_handler(conn, addr):
+def client_handler(conn, addr,Flag_stop):
     peers_port_current=""
+    conn.settimeout(5) 
     try:
         while True:
-            data = conn.recv(4096).decode()
-            # log_event(f"Received data from {addr}: {data}")
-            if not data:
+            if Flag_stop[0]!=0: #exit
                 break
+            try:
+                data = conn.recv(4096).decode()
+                # log_event(f"Received data from {addr}: {data}")
+                if not data:
+                    break
 
-            command = json.loads(data)
+                command = json.loads(data)
 
-            peers_ip = addr[0]
-            peers_port = command['peers_port'] if 'peers_port' in command else ""
-            peers_port_current = command['peers_port'] if 'peers_port' in command else ""
-            peers_hostname = command['peers_hostname'] if 'peers_hostname' in command else ""
-            file_name = command['file_name'] if 'file_name' in command else ""
-            file_size = command['file_size'] if 'file_size' in command else ""
-            piece_hash = command['piece_hash'] if 'piece_hash' in command else ""
-            piece_size = command['piece_size'] if 'piece_size' in command else ""
-            num_order_in_file = command['num_order_in_file'] if 'num_order_in_file' in command else ""
+                peers_ip = addr[0]
+                if command.get('action') != 'check':
+                    peers_port = command['peers_port'] 
+                    peers_port_current = command['peers_port'] 
+                peers_hostname = command['peers_hostname'] if 'peers_hostname' in command else ""
+                file_name = command['file_name'] if 'file_name' in command else ""
+                file_size = command['file_size'] if 'file_size' in command else ""
+                piece_hash = command['piece_hash'] if 'piece_hash' in command else ""
+                piece_size = command['piece_size'] if 'piece_size' in command else ""
+                num_order_in_file = command['num_order_in_file'] if 'num_order_in_file' in command else ""
 
-            if command.get('action') == 'check':
-                conn.sendall("ServerOn".encode())
-                
-            elif command.get('action') == 'introduce':
-                client_peers_hostname = command.get('peers_hostname')
-                active_connections[str(peers_port)] = conn
-                log_event(f"Connection established with {client_peers_hostname}/{peers_ip}:{peers_port})")
-
-            elif command['action'] == 'publish': 
-                # peers_ip,peers_port,peers_hostname,file_name,piece_hash
-                log_event(f"Updating client info in database for hostname: {peers_hostname}/{peers_ip}:{peers_port}")
-                update_client_info(peers_ip,peers_port, peers_hostname,file_name,file_size, piece_hash,piece_size,num_order_in_file)  # addr[0] is the IP address
-                log_event(f"Database update complete for hostname: {peers_hostname}/{peers_ip}:{peers_port}")
-                conn.sendall("File list updated to server successfully.".encode())
-
-            elif command['action'] == 'fetch':
-                # print("fetch",file_name, num_order_in_file, piece_hash)
-                # Query the database for the IP addresses of the clients that have the file
-                cur.execute("SELECT * FROM peers WHERE file_name = %s AND num_order_in_file <> ALL (%s) AND piece_hash <> ALL (%s)", (file_name, num_order_in_file, piece_hash))
-                results = cur.fetchall()
-                if results:
-                    # Create a list of dictionaries with 'hostname' and 'ip' keys
-                    peers_info = [{'peers_ip': peers_ip, 'peers_port': peers_port, 'peers_hostname': peers_hostname, 'file_name':file_name,'file_size':file_size,'piece_hash':piece_hash,'piece_size':piece_size,'num_order_in_file':num_order_in_file } for peers_ip, peers_port, peers_hostname, file_name,file_size, piece_hash,piece_size, num_order_in_file  in results if str(peers_port) in active_connections]
-                    conn.sendall(json.dumps({'peers_info': peers_info}).encode())
-                else:
-                    conn.sendall(json.dumps({'error': 'File not available'}).encode())
+                if command.get('action') == 'check':
+                    conn.sendall("ServerOn".encode())
                     
-            elif command['action'] == 'info':
-                # print("fetch",file_name, num_order_in_file, piece_hash)
-                # Query the database for the IP addresses of the clients that have the file
-                cur.execute("SELECT * FROM peers WHERE file_name = %s", (file_name,))
-                results = cur.fetchall()
-                if results:
-                    # Create a list of dictionaries with 'hostname' and 'ip' keys
-                    print( active_connections)
-                    peers_info = [{'peers_ip': peers_ip, 'peers_port': peers_port, 'peers_hostname': peers_hostname, 'file_name':file_name,'file_size':file_size,'piece_hash':piece_hash,'piece_size':piece_size,'num_order_in_file':num_order_in_file } for peers_ip, peers_port, peers_hostname, file_name,file_size, piece_hash,piece_size, num_order_in_file  in results if str(peers_port) in active_connections]
-                    conn.sendall(json.dumps({'peers_info': peers_info}).encode())
-                else:
-                    conn.sendall(json.dumps({'error': 'File not available'}).encode())
+                elif command.get('action') == 'introduce':
+                    client_peers_hostname = command.get('peers_hostname')
+                    active_connections[str(peers_port)] = conn
+                    log_event(f"Connection established with {client_peers_hostname}/{peers_ip}:{peers_port})")
 
-            elif command['action'] == 'file_list':
-                files = command['files']
-                print(f"List of files : {files}")
+                elif command['action'] == 'publish': 
+                    # peers_ip,peers_port,peers_hostname,file_name,piece_hash
+                    log_event(f"Updating client info in database for hostname: {peers_hostname}/{peers_ip}:{peers_port}")
+                    update_client_info(peers_ip,peers_port, peers_hostname,file_name,file_size, piece_hash,piece_size,num_order_in_file)  # addr[0] is the IP address
+                    log_event(f"Database update complete for hostname: {peers_hostname}/{peers_ip}:{peers_port}")
+                    conn.sendall("File list updated to server successfully.".encode())
+
+                elif command['action'] == 'fetch':
+                    # print("fetch",file_name, num_order_in_file, piece_hash)
+                    # Query the database for the IP addresses of the clients that have the file
+                    cur.execute("SELECT * FROM peers WHERE file_name = %s AND num_order_in_file <> ALL (%s) AND piece_hash <> ALL (%s)", (file_name, num_order_in_file, piece_hash))
+                    results = cur.fetchall()
+                    if results:
+                        # print(active_connections)
+                        # Create a list of dictionaries with 'hostname' and 'ip' keys
+                        peers_info = [{'peers_ip': peers_ip, 'peers_port': peers_port, 'peers_hostname': peers_hostname, 'file_name':file_name,'file_size':file_size,'piece_hash':piece_hash,'piece_size':piece_size,'num_order_in_file':num_order_in_file } for peers_ip, peers_port, peers_hostname, file_name,file_size, piece_hash,piece_size, num_order_in_file  in results if str(peers_port) in active_connections]
+                        conn.sendall(json.dumps({'peers_info': peers_info}).encode())
+                    else:
+                        conn.sendall(json.dumps({'error': 'File not available'}).encode())
+                        
+                elif command['action'] == 'info':
+                    # print("fetch",file_name, num_order_in_file, piece_hash)
+                    # Query the database for the IP addresses of the clients that have the file
+                    cur.execute("SELECT * FROM peers WHERE file_name = %s", (file_name,))
+                    results = cur.fetchall()
+                    if results:
+                        # Create a list of dictionaries with 'hostname' and 'ip' keys
+                        # print( active_connections)
+                        peers_info = [{'peers_ip': peers_ip, 'peers_port': peers_port, 'peers_hostname': peers_hostname, 'file_name':file_name,'file_size':file_size,'piece_hash':piece_hash,'piece_size':piece_size,'num_order_in_file':num_order_in_file } for peers_ip, peers_port, peers_hostname, file_name,file_size, piece_hash,piece_size, num_order_in_file  in results if str(peers_port) in active_connections]
+                        conn.sendall(json.dumps({'peers_info': peers_info}).encode())
+                    else:
+                        conn.sendall(json.dumps({'error': 'File not available'}).encode())
+
+                elif command['action'] == 'file_list':
+                    files = command['files']
+                    print(f"List of files : {files}")
+            except socket.timeout:
+                # Khi timeout xảy ra, tiếp tục kiểm tra Flag_stop
+                continue
 
     except Exception as e:
         logging.exception(f"An error occurred while handling client {addr[0]}:{peers_port_current}: {e}")
     finally:
         if peers_port:
-            del active_connections[str(peers_port)]  
+            del active_connections[str(peers_port)] 
         conn.close()
         log_event(f"Connection with {addr[0]}:{peers_port_current} has been closed.")
 
@@ -150,7 +162,7 @@ def ping_host(peers_hostname):
 def server_command_shell(Flag_stop):
     try:
         while True:
-            cmd_input = input("Server command: ")
+            cmd_input = input("Server command:\n")
             cmd_parts = cmd_input.split()
             if cmd_parts:
                 action = cmd_parts[0]
@@ -183,7 +195,7 @@ def start_server(Flag_stop,host, port):
             try:
                 server_socket.settimeout(1.0)  # Đặt thời gian chờ để kiểm tra cờ thường xuyên
                 conn, addr = server_socket.accept()
-                thread = threading.Thread(target=client_handler, args=(conn, addr))
+                thread = threading.Thread(target=client_handler, args=(conn, addr,Flag_stop))
                 thread.start()
                 log_event(f"Active connections: {threading.active_count() - 2}")
             except socket.timeout:
@@ -197,9 +209,15 @@ if __name__ == "__main__":
     SERVER_PORT = 65431
     SERVER_HOST='0.0.0.0'
     Flag_stop=[0]
+    # with open("data_client_active.txt", "r") as file:
+    #     content = file.read()
+    #     print(content,type(content))
+    # result = ast.literal_eval(content)
     # Start server in a separate thread
     server_thread = threading.Thread(target=start_server, args=(Flag_stop,SERVER_HOST,SERVER_PORT))
     server_thread.start()
+    
+
 
     # Start the server command shell in the main thread
     server_command_shell(Flag_stop)

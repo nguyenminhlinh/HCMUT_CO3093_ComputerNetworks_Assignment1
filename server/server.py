@@ -221,6 +221,9 @@ if __name__ == "__main__":
         print("The server stopped suddenly and the backup server was running")
         try:
             parent_path = os.path.dirname(os.getcwd())+"\\server_backup\\server.py"
+            # keys = list(active_connections.keys())
+            # with open("data_client_active.txt", "w") as file:
+            #     file.write(str(keys))
             subprocess.Popen(["start", "powershell", "-NoExit", "-Command", f"python '{parent_path}'"], shell=True)
         except Exception as e:
             print(f"An error occurred while running the server: {e}")

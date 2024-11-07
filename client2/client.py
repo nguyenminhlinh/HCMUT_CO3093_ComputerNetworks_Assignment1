@@ -204,6 +204,14 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
             for i in list_piece_id_download:
                 list_piece_name_download.append(file_name+"_piece"+str(i))
             piece_hash = create_pieces_string(list_piece_name_download)
+            
+            for i in range(len(piece_hash)):
+                if not any(piece_hash[i] in str(value) for peer in peers_info for value in peer.values()):
+                    print(f"File {list_piece_name_download[i]} have hash {list_piece_name_download[i]} is incorrect")
+                    list_piece_name_download.pop(i)
+                    list_piece_id_download.pop(i)
+                    piece_hash.pop(i)     
+                    
             publish_piece_file(sock,peers_port,file_name,peers_info[0]['file_size'], piece_hash,peers_info[0]['piece_size'],list_piece_id_download)
             # print(list_piece_name_download)
             # print(piece_hash)
@@ -269,7 +277,7 @@ def connect_to_server(server_host, server_port, peers_port):
         print(f"Unable to connect to server: {e}")
         return None,None
 
-def check_server(sock):
+def check_server(sock,flag_exit):
     while True:
         time.sleep(5)  # Kiểm tra mỗi 5 giây
         try:
@@ -283,59 +291,76 @@ def check_server(sock):
                 print("Server is not responding.")
                 break
         except socket.error:
+            if not flag_exit[0]:
+                print("\nThe main server is down, if you want to connect to the backup server, enter reconnect.")
             break
         
-def main(server_host, server_port, peers_port):
+def main(server_host, server_port, peers_port,flag_re_connect):
     # Connect to the server
     
     sock,host_service_thread = connect_to_server(server_host, server_port,peers_port)
     if sock==None:
         return
 
-    # check_server_thread = threading.Thread(target=check_server, args=(sock,))
-    # check_server_thread.start()
+    flag_exit=[False]
+    if not flag_re_connect[0]:
+        check_server_thread = threading.Thread(target=check_server, args=(sock,flag_exit,))
+        check_server_thread.start()
+    
+    
     
     try:
         while True:
-            user_input = input("Enter command (publish file_name file_name2/ fetch file_name file_name2/ exit): ")#addr[0],peers_port, peers_hostname,file_name, piece_hash,num_order_in_file
-            command = {
+            user_input = input("Enter command (publish file_name file_name2 / fetch file_name file_name2/ exit): ")#addr[0],peers_port, peers_hostname,file_name, piece_hash,num_order_in_file
+            
+            command_parts = shlex.split(user_input)
+            if len(command_parts) >= 2 and command_parts[0].lower() == 'publish':
+                command = {
                     "action": "check",
                 } 
-            sock.sendall(json.dumps(command).encode() + b'\n')                    
-            sock.recv(4096).decode()
-            # sock.sendall("check".encode())                    
-            # response = sock.recv(4096).decode()
-            command_parts = shlex.split(user_input)
-            if len(command_parts) == 2 and command_parts[0].lower() == 'publish':
-                _,file_name = command_parts
-                if check_local_files(file_name):
-                    piece_size = 524288  # 524288 byte = 512KB
-                    file_size = os.path.getsize(file_name)
-                    pieces = split_file_into_pieces(file_name,piece_size)
-                    handle_publish_piece(sock, peers_port, pieces, file_name,file_size,piece_size)
-                elif (pieces := check_local_piece_files(file_name)):
-                    piece_size = 524288  # 524288 byte = 512KB
-                    peers_hostname = socket.gethostname()
-                    
-                    command = {
-                        "action": "info",
-                        "peers_port": peers_port,
-                        "peers_hostname":peers_hostname,
-                        "file_name":file_name,
-                    } 
-                    sock.sendall(json.dumps(command).encode() + b'\n')                    
-                    response = json.loads(sock.recv(4096).decode())
-                    
-                    if 'peers_info' in response:
-                        peers_info = response['peers_info']
-                        file_size=int(peers_info[0]['file_size'])
+                sock.sendall(json.dumps(command).encode() + b'\n')                    
+                sock.recv(4096).decode()
+                # sock.sendall("check".encode())                    
+                # response = sock.recv(4096).decode()
+                for file_name in command_parts[1:]:
+                    if check_local_files(file_name):
+                        piece_size = 524288  # 524288 byte = 512KB
+                        file_size = os.path.getsize(file_name)
+                        pieces = split_file_into_pieces(file_name,piece_size)
+                        handle_publish_piece(sock, peers_port, pieces, file_name,file_size,piece_size)
+                    elif (pieces := check_local_piece_files(file_name)):
+                        piece_size = 524288  # 524288 byte = 512KB
+                        peers_hostname = socket.gethostname()
+                        
+                        command = {
+                            "action": "info",
+                            "peers_port": peers_port,
+                            "peers_hostname":peers_hostname,
+                            "file_name":file_name,
+                        } 
+                        sock.sendall(json.dumps(command).encode() + b'\n')                    
+                        response = json.loads(sock.recv(4096).decode())
+                        
+                        if 'peers_info' in response:
+                            peers_info = response['peers_info']
+                            if len(peers_info)>0:
+                                file_size=int(peers_info[0]['file_size'])
+                            else:
+                                file_size=0  
+                        else:
+                            file_size=0  
+                            
+                        handle_publish_piece(sock, peers_port, pieces, file_name,file_size,piece_size)
                     else:
-                        file_size=0  
-                          
-                    handle_publish_piece(sock, peers_port, pieces, file_name,file_size,piece_size)
-                else:
-                    print(f"Local file {file_name}/piece does not exist.")
+                        print(f"Local file {file_name}/piece does not exist.")
             elif len(command_parts) >= 2 and command_parts[0].lower() == 'fetch':
+                command = {
+                    "action": "check",
+                } 
+                sock.sendall(json.dumps(command).encode() + b'\n')                    
+                sock.recv(4096).decode()
+                # sock.sendall("check".encode())                    
+                # response = sock.recv(4096).decode()
                 for file_name in command_parts[1:]:
                     pieces = check_local_piece_files(file_name)
                     pieces_hash = [] if not pieces else create_pieces_string(pieces)
@@ -344,10 +369,16 @@ def main(server_host, server_port, peers_port):
             elif user_input.lower() == 'exit':
                 stop_event.set()  # Stop the host service thread
                 sock.close()
+                flag_exit[0]=True
+                break
+            elif user_input.lower() == 'reconnect':
+                stop_event.set()  # Stop the host service thread
+                sock.close()
+                flag_re_connect[0]=True
                 break
             else:
                 print("Invalid command.")
-    except socket.error:
+    except socket.error :
         print("The server is not online")
     finally:
             sock.close()
@@ -355,10 +386,13 @@ def main(server_host, server_port, peers_port):
             host_service_thread.join()
 
 
-
 if __name__ == "__main__":
     # Replace with your server's IP address and port number
     SERVER_HOST = '192.168.56.1'
     SERVER_PORT = 65432
+    BACKUP_SERVER_PORT = 65431
     CLIENT_PORT = 65434
-    main(SERVER_HOST, SERVER_PORT,CLIENT_PORT)
+    FLAG_RE_CONNECT=[False]
+    main(SERVER_HOST, SERVER_PORT,CLIENT_PORT,FLAG_RE_CONNECT)
+    if FLAG_RE_CONNECT[0]:
+        main(SERVER_HOST, BACKUP_SERVER_PORT,CLIENT_PORT,FLAG_RE_CONNECT)
