@@ -13,6 +13,8 @@ All descriptions and reports are included in the documentation
 ```
 python3 -m pip install psycopg2
 ```
+- Run SQL Shell as below image
+![install sql](_img/image1.png)
 - Press enter until you get to the password, then enter the password as 12345678
 ![install sql](_img/image.png)
 ## Installation
@@ -30,123 +32,66 @@ $ cd HCMUT_CO3093_ComputerNetworks_Assignment1
 3. Client Setup:
    - $ cd client1
    - $ cd client2
+   - $ cd client3
    - Edit the `SERVER_HOST`, `SERVER_PORT`, `CLIENT_PORT` setting in the `client.py` file to configure the IP for the central server. After that run the `client.py` script to start the client and connect to the central server.
 
 ## Features
 
 1. The client has a simple command-shell interpreter that is used to accept two kinds of commands.
-    - `publish file_name`: A set of local files on the client machine is divided into parts (size of each part is 512kb). Users can select pieces shared content to send information to the server.
+    - `publish file_name file_name2`: A set of local files on the client machine is divided into parts (size of each part is 512kb). Users can select pieces shared content to send information to the server.
     
-    - `fetch file_name`: The server sends information about parts of files shared by peers that are not yet available to clients. Clients can choose any part to download. Once all parts are downloaded, they will be merged into one original file.
+    - `fetch file_name file_name2`: The server sends information about parts of files shared by peers that are not yet available to clients. Clients can choose any part to download. Once all parts are downloaded, they will be merged into one original file.
 
 ## Example
-### Client1 publish Data.pdf on Server
-#### Server side
+Server chưa có dữ liệu nào. Và thông tin file các client đang có.
 
-```
-\server> python server.py
-2024-04-25 15:51:31,649 - INFO - Server started and is listening for connections.
-Server command: 2024-04-25 15:51:35,938 - INFO - Active connections: 2
-2024-04-25 15:51:35,938 - INFO - Connection established with linh/192.168.56.1:65433)
-2024-04-25 15:51:41,464 - INFO - Active connections: 3
-2024-04-25 15:51:41,472 - INFO - Connection established with linh/192.168.56.1:65434)
-2024-04-25 15:52:03,987 - INFO - Updating client info in database for hostname: linh/192.168.56.1:65433
-2024-04-25 15:52:03,992 - INFO - Database update complete for hostname: linh/192.168.56.1:65433
-```
+![exam](_img/ex1_0.jpg)
+![exam](_img/ex1_1.jpg)
 
-#### Client side
-Client 1 push piece 1,2,4,5,6
-```
-\client1> python client.py
-Enter command (publish file_name/ fetch file_name/ exit): publish Data.pdf
-File Data.pdf have ['Data.pdf_piece1', 'Data.pdf_piece2', 'Data.pdf_piece3', 'Data.pdf_piece4', 'Data.pdf_piece5', 'Data.pdf_piece6']
- piece: ["b'\\xe1\\xd8\\\\r\\xa2\\t\\xee\\x0c\\xfd91\\x12\\xedkk\\xf1u\\x03\\x9b\\x14'", "b'\\x14\\xab\\x0eC\\xb1mi\\xfb\\x9c\\xcd\\x19\\x90*\\xcez\\xbc\\xe3\\r!\\x1f'", "b'\\xb4\\x9bo\\n\\xbdG|l^\\xd9\\x99\\xa5\\xd0?\\xf8\\xe8\\xabsY|'", "b'\\n\\xb2\\x04Z\\x87\\xd1R\\xb1$\\x13\\xdai\\x1500A\\xeb\\xdbN\\xf1'", "b'1\\xb4\\xe9l\\x9c\\x8cH\\x02\\x91\\xe2\\x1c\\xd6\\xf8{\\x0bX\\xd8#\\xa19'", "b'X\\x94!g\\xa9\\xc6\\xe4S\\x1b\\x89NS\\xe0\\xce\\x03\\xc9\\xed\\xd3x\\x98'"].
-Please select num piece in file to publish:1 2 4 5 6
-You was selected:
-Number 1 : b'\xe1\xd8\\r\xa2\t\xee\x0c\xfd91\x12\xedkk\xf1u\x03\x9b\x14'
-Number 2 : b'\x14\xab\x0eC\xb1mi\xfb\x9c\xcd\x19\x90*\xcez\xbc\xe3\r!\x1f'
-Number 4 : b'\n\xb2\x04Z\x87\xd1R\xb1$\x13\xdai\x1500A\xeb\xdbN\xf1'
-Number 5 : b'1\xb4\xe9l\x9c\x8cH\x02\x91\xe2\x1c\xd6\xf8{\x0bX\xd8#\xa19'
-Number 6 : b'X\x94!g\xa9\xc6\xe4S\x1b\x89NS\xe0\xce\x03\xc9\xed\xd3x\x98'
-File list updated successfully.
-Enter command (publish file_name/ fetch file_name/ exit):
-```
+1. Server có 3 client đang trực tuyến: Client 1, Client 2, Client 3
 
-### Client2 publish Data.pdf on Server
-#### Server side
+![exam](_img/ex1_2.jpg)
 
-```
-\server> python server.py
-2024-04-25 15:51:31,649 - INFO - Server started and is listening for connections.
-Server command: 2024-04-25 15:51:35,938 - INFO - Active connections: 2
-2024-04-25 15:51:35,938 - INFO - Connection established with linh/192.168.56.1:65433)
-2024-04-25 15:51:41,464 - INFO - Active connections: 3
-2024-04-25 15:51:41,472 - INFO - Connection established with linh/192.168.56.1:65434)
-2024-04-25 15:52:03,987 - INFO - Updating client info in database for hostname: linh/192.168.56.1:65433
-2024-04-25 15:52:03,992 - INFO - Database update complete for hostname: linh/192.168.56.1:65433
-```
+2. Publish file Data.pdf, Data1.pdf từ Client 1 lên server. 
 
-#### Client side
-Client 2 push piece 1,3,4,5,6
-```
-\client1> python client.py
-Enter command (publish file_name/ fetch file_name/ exit): publish Data.pdf
-File Data.pdf have ['Data.pdf_piece1', 'Data.pdf_piece2', 'Data.pdf_piece3', 'Data.pdf_piece4', 'Data.pdf_piece5', 'Data.pdf_piece6']
- piece: ["b'\\xe1\\xd8\\\\r\\xa2\\t\\xee\\x0c\\xfd91\\x12\\xedkk\\xf1u\\x03\\x9b\\x14'", "b'\\x14\\xab\\x0eC\\xb1mi\\xfb\\x9c\\xcd\\x19\\x90*\\xcez\\xbc\\xe3\\r!\\x1f'", "b'\\xb4\\x9bo\\n\\xbdG|l^\\xd9\\x99\\xa5\\xd0?\\xf8\\xe8\\xabsY|'", "b'\\n\\xb2\\x04Z\\x87\\xd1R\\xb1$\\x13\\xdai\\x1500A\\xeb\\xdbN\\xf1'", "b'1\\xb4\\xe9l\\x9c\\x8cH\\x02\\x91\\xe2\\x1c\\xd6\\xf8{\\x0bX\\xd8#\\xa19'", "b'X\\x94!g\\xa9\\xc6\\xe4S\\x1b\\x89NS\\xe0\\xce\\x03\\xc9\\xed\\xd3x\\x98'"].
-Please select num piece in file to publish:1 3 4 5 6
-You was selected:
-Number 1 : b'\xe1\xd8\\r\xa2\t\xee\x0c\xfd91\x12\xedkk\xf1u\x03\x9b\x14'
-Number 3 : b'\xb4\x9bo\n\xbdG|l^\xd9\x99\xa5\xd0?\xf8\xe8\xabsY|'
-Number 4 : b'\n\xb2\x04Z\x87\xd1R\xb1$\x13\xdai\x1500A\xeb\xdbN\xf1'
-Number 5 : b'1\xb4\xe9l\x9c\x8cH\x02\x91\xe2\x1c\xd6\xf8{\x0bX\xd8#\xa19'
-Number 6 : b'X\x94!g\xa9\xc6\xe4S\x1b\x89NS\xe0\xce\x03\xc9\xed\xd3x\x98'
-File list updated successfully.
-Enter command (publish file_name/ fetch file_name/ exit):
-```
+![exam](_img/ex1_3.jpg)
+![exam](_img/ex1_4.jpg)
 
-### Client3 fetch Data.pdf 
-#### Server side
+3. Publish file Data.pdf(piece 1, 2, 3) từ Client 2 lên server. 
 
-```
-\server> python server.py
-2024-04-25 15:51:31,649 - INFO - Server started and is listening for connections.
-Server command: 2024-04-25 15:51:35,938 - INFO - Active connections: 2
-2024-04-25 15:51:35,938 - INFO - Connection established with linh/192.168.56.1:65433)
-2024-04-25 15:51:41,464 - INFO - Active connections: 3
-2024-04-25 15:51:41,472 - INFO - Connection established with linh/192.168.56.1:65434)
-2024-04-25 15:52:03,987 - INFO - Updating client info in database for hostname: linh/192.168.56.1:65433
-2024-04-25 15:52:03,992 - INFO - Database update complete for hostname: linh/192.168.56.1:65433
-```
+![exam](_img/ex1_5.jpg)
+![exam](_img/ex1_6.jpg)
 
-#### Client side
-Client3 fetch file Data.pdf. It select pieces between client 1 and client 2 follow algorithm I define myself:
-   - Piece of file: Data.pdf_piece2 has been fetched from peer192.168.56.1:65433.
-   - Piece of file: Data.pdf_piece3 has been fetched from peer192.168.56.1:65434.
-   - Piece of file: Data.pdf_piece4 has been fetched from peer192.168.56.1:65433.
-   - Piece of file: Data.pdf_piece5 has been fetched from peer192.168.56.1:65434.
-   - Piece of file: Data.pdf_piece6 has been fetched from peer192.168.56.1:65433.
-   - Create file Data.pdf successful
-```
-Enter command (publish file_name/ fetch file_name/ exit): fetch Data.pdf
-No peers have the file or the response format is incorrect.
-Enter command (publish file_name/ fetch file_name/ exit): exit
-PS D:\OneDrive - zb87w\STUDY\Ki6\Mang_may_tinh\2024\ass1\HCMUT_CO3093_ComputerNetworks_Assignment1\client3> python client.py
-Enter command (publish file_name/ fetch file_name/ exit): fetch Data.pdf
-Hosts with the file Data.pdf:
-Number: 2 linh/192.168.56.1:65433 piece_hash: b'\x14\xab\x0eC\xb1mi\xfb\x9c\xcd\x19\x90*\xcez\xbc\xe3\r!\x1f' num_order_in_file: 2
-Number: 4 linh/192.168.56.1:65433 piece_hash: b'\n\xb2\x04Z\x87\xd1R\xb1$\x13\xdai\x1500A\xeb\xdbN\xf1' num_order_in_file: 4
-Number: 5 linh/192.168.56.1:65433 piece_hash: b'1\xb4\xe9l\x9c\x8cH\x02\x91\xe2\x1c\xd6\xf8{\x0bX\xd8#\xa19' num_order_in_file: 5
-Number: 6 linh/192.168.56.1:65433 piece_hash: b'X\x94!g\xa9\xc6\xe4S\x1b\x89NS\xe0\xce\x03\xc9\xed\xd3x\x98' num_order_in_file: 6
-Number: 3 linh/192.168.56.1:65434 piece_hash: b'\xb4\x9bo\n\xbdG|l^\xd9\x99\xa5\xd0?\xf8\xe8\xabsY|' num_order_in_file: 3
-Number: 4 linh/192.168.56.1:65434 piece_hash: b'\n\xb2\x04Z\x87\xd1R\xb1$\x13\xdai\x1500A\xeb\xdbN\xf1' num_order_in_file: 4
-Number: 5 linh/192.168.56.1:65434 piece_hash: b'1\xb4\xe9l\x9c\x8cH\x02\x91\xe2\x1c\xd6\xf8{\x0bX\xd8#\xa19' num_order_in_file: 5
-Number: 6 linh/192.168.56.1:65434 piece_hash: b'X\x94!g\xa9\xc6\xe4S\x1b\x89NS\xe0\xce\x03\xc9\xed\xd3x\x98' num_order_in_file: 6
-6
-Piece of file: Data.pdf_piece2 has been fetched from peer192.168.56.1:65433.
-Piece of file: Data.pdf_piece3 has been fetched from peer192.168.56.1:65434.
-Piece of file: Data.pdf_piece4 has been fetched from peer192.168.56.1:65433.
-Piece of file: Data.pdf_piece5 has been fetched from peer192.168.56.1:65434.
-Piece of file: Data.pdf_piece6 has been fetched from peer192.168.56.1:65433.
-Create file Data.pdf successful
-Enter command (publish file_name/ fetch file_name/ exit):
-```
+3. Exit Client 1.
+
+![exam](_img/ex1_7.jpg)
+
+4. Client 3 yêu cầu fetch file Data.pdf, Data1.pdf lên server. Chỉ có piece 2,3 của Data.pdf được tải do client3 có sẵn piece1 và chỉ có client2 on còn client1 đã off. Sau khi tải piece 2,3 thì client2 chia sẽ lên server là đang chứa piece 2,3 của file Data.pdf. Và thông báo không đủ các piece để tạo ra file Data.pdf.
+
+![exam](_img/ex1_8.jpg)
+
+5. Khởi động lại Client 1 và Fetch Data.pdf Data1.pdf từ Client 3. Client 3 sẽ tải piece 4,5,6 của Data.pdf và piece1 của Data1.pdf.  Sau khi tải piece 4,5,6 của Data.pdf và piece1 của Data1 thì client2 chia sẽ lên server là đang chứa piece 4,5,6 của Data.pdf và piece1 của Data1. Sau đó Client3 merger các piece thành file Data.pdf và Data1.pdf.
+
+![exam](_img/ex1_9.jpg)
+![exam](_img/ex1_10.jpg)
+
+6. Client 2 có file Data2.pdf (tự thêm vào). Sau đó server bị shutdown bằng ctrl + C. Sau đó server backup được khởi động.
+
+![exam](_img/ex1_14.jpg)
+![exam](_img/ex1_11.jpg)
+
+7. Các client được thông báo "The main server is down, if you want to connect to the backup server, enter reconnect". Nhập `reconnect` để kết nối lại với server backup. 
+
+![exam](_img/ex1_12.jpg)
+
+8. Sau khi kết nối lại, kiểm tra chức năng publish Data2.pdf từ client2. Chức năng hoạt động tốt in ra thông báo  
+`Publishing file Data2.pdf to server:
+Data2.pdf_piece1 : b'8\xecs\xd3\xb5\x18\x944c\x08<\xd2\x1d\xe4\x8b\xea\xc3\xef&l'
+File list updated to server successfully`
+
+![exam](_img/ex1_15.jpg)
+
+9. Kết quả trong database của server cũng cập nhập Data2.pdf
+
+![exam](_img/ex1_13.jpg)
+
