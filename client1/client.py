@@ -354,7 +354,7 @@ def request_file_from_peer(peers_ip, peer_port, file_name, piece_hash, num_order
     return Fetch_Data
 
 def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
-    Fetch_Information = {"Data":{},"Response":""}
+    Fetch_Information = {"Data":[],"Response":""}
     peers_hostname = socket.gethostname()
     command = {
         "action": "fetch",
@@ -412,7 +412,8 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
                         index = next((j for j, peer_info in enumerate(peers_info) if peer_info.get('peers_port') == port and str(peer_info.get('piece_hash'))==str(hash)) , None)
                     
                         if index is not None:
-                            Fetch_Information["Data"] = request_file_from_peer(peers_info[index]['peers_ip'], peers_info[index]['peers_port'], peers_info[index]['file_name'],peers_info[index]['piece_hash'],peers_info[index]['num_order_in_file'])
+                            Piece_Data = request_file_from_peer(peers_info[index]['peers_ip'], peers_info[index]['peers_port'], peers_info[index]['file_name'],peers_info[index]['piece_hash'],peers_info[index]['num_order_in_file'])
+                            Fetch_Information["Data"].append(Piece_Data)
                             list_piece_id_download.append(int(num_piece))
                             continue
                     elif int(peer_info['num_order_in_file'])==num_piece:
@@ -430,8 +431,9 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
                     if index is not None:
                         dict_list_client_port[peers_info[index]['peers_port']]=dict_list_client_port[peers_info[index]['peers_port']]+1
                         list_piece_id_download.append(int(num_piece))
-                        Fetch_Information["Data"] = request_file_from_peer(peers_info[index]['peers_ip'], peers_info[index]['peers_port'], peers_info[index]['file_name'],peers_info[index]['piece_hash'],peers_info[index]['num_order_in_file'])
-            
+                        Piece_Data = request_file_from_peer(peers_info[index]['peers_ip'], peers_info[index]['peers_port'], peers_info[index]['file_name'],peers_info[index]['piece_hash'],peers_info[index]['num_order_in_file'])
+                        Fetch_Information["Data"].append(Piece_Data)
+
             list_piece_name_download=[]
             for i in list_piece_id_download:
                 list_piece_name_download.append(file_name+"_piece"+str(i))
