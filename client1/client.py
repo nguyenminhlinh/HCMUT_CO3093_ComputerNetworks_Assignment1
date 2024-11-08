@@ -208,6 +208,7 @@ class Client_UI():
                         self.Tree.insert("","end",values=(f"{piece_file}",f"{piece_hash}"))
                     Message += Response[Filename_Publish]["Information"]["Response"]
             messagebox.showinfo(title="Publish Status",message=Message)
+            
     def Fetch_Handler(self):
         self.Tree.heading("File",text="File")
         self.Tree.heading("Information",text="Port")
@@ -309,6 +310,7 @@ def handle_publish_piece(sock, peers_port, pieces, file_name,file_size,piece_siz
         print (f"{i} : {pieces_hash[index]}")
         Publish_Information["Data"][f"{i}"] = f"{pieces_hash[index]}"
     Response = publish_piece_file(sock,peers_port,file_name,file_size, piece_hash,piece_size,num_order_in_file)
+    Publish_Information["Response"] = Response
     return Publish_Information
 
 def publish_piece_file(sock,peers_port,file_name,file_size, piece_hash,piece_size,num_order_in_file):
@@ -462,6 +464,7 @@ def fetch_file(sock,peers_port,file_name, piece_hash, num_order_in_file):
     else:
         print("No peers have the file or you had this file.")
         Fetch_Information["Response"] = f"No peers have the file or you had this file."
+    return Fetch_Information
 
 def send_piece_to_client(conn, piece):
     with open(piece, 'rb') as f:
@@ -490,7 +493,6 @@ def start_host_service(port, shared_files_dir):
     server_sock.listen()
 
     while not stop_event.is_set():
-        print("test")
         try:
             server_sock.settimeout(1) 
             conn, addr = server_sock.accept()
@@ -509,6 +511,8 @@ def connect_to_server(server_host, server_port, peers_port):
         sock.settimeout(1)
         sock.connect((server_host, server_port))
         peers_hostname = socket.gethostname()
+        host_service_thread = threading.Thread(target=start_host_service, args=(peers_port, './'))
+        host_service_thread.start()
         sock.sendall(json.dumps({'action': 'introduce', 'peers_hostname': peers_hostname, 'peers_port': peers_port}).encode() + b'\n')
         return sock
     except (socket.error, ConnectionRefusedError) as e:
@@ -523,7 +527,6 @@ def check_server(sock):
             } 
         sock.sendall(json.dumps(command).encode() + b'\n')                    
         response = sock.recv(4096).decode()
-        print("test2")
         if 'ServerOn' not in response:
             return "NotResponse"
         else:
@@ -595,6 +598,8 @@ def Command_Handler(user_input:str,peers_port:int,sock):
             pieces_hash = [] if not pieces else create_pieces_string(pieces)
             num_order_in_file= [] if not pieces else [item.split("_")[-1][5:] for item in pieces]
             Fetch_Response[file_name] = fetch_file(sock,peers_port,file_name, pieces_hash,num_order_in_file)
+        return Fetch_Response
+
     elif user_input.lower() == 'exit':
         stop_event.set()  # Stop the host service thread
         sock.close()
@@ -615,5 +620,5 @@ if __name__ == "__main__":
         print("Cannot connect to server")
         messagebox.showerror(title="Error",message="Cannot connect to server")
     else:
-        App = Client_UI(SSID = "client1", PassWord="0123456789",Client_Port=CLIENT_PORT,socket = sock)
+        App = Client_UI(SSID = "client1", PassWord="1234",Client_Port=CLIENT_PORT,socket = sock)
         App.Start_UI()
