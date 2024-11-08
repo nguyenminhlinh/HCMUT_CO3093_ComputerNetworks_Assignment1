@@ -222,8 +222,9 @@ class Client_UI():
             user_input = f"fetch {File_Name}"
             Reponse = Command_Handler(user_input=user_input,peers_port=self.Client_Port,sock=self.Socket) 
             for filename in Reponse:
-                for file_piece in Reponse[filename]["Data"]:
-                    ip_port = Reponse[filename]["Data"][file_piece]
+                for file_piece_data in Reponse[filename]["Data"]:
+                    for file_piece in file_piece_data:
+                        ip_port = file_piece_data[file_piece]
                     self.Tree.insert("","end",values=(f"{file_piece}",f"{ip_port}"))
                 Response_Message = Reponse[filename]["Response"]
                 Message += f"{Response_Message}\n"
