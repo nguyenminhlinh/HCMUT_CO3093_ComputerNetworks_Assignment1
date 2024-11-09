@@ -132,11 +132,32 @@ def request_file_list_from_client(peers_hostname):
     else:
         return "Error: Client not connected"
 
-def discover_files(peers_hostname):
-    # Connect to the client and request the file list
-    files = request_file_list_from_client(peers_hostname)
-    print(f"Files on {peers_hostname}: {files}")
+# Discover Files Function
+def discover_files(file_name):
+    try:
+        # Query the database to find all peers that have the specified file_name
+        cur.execute("SELECT peers_ip, peers_port, peers_hostname, num_order_in_file FROM peers WHERE file_name = %s", (file_name,))
+        results = cur.fetchall()
 
+        if results:
+            # Create a list of dictionaries with details of each peer
+            peers_info = [
+                {
+                    'peers_ip': peers_ip,
+                    'peers_port': peers_port,
+                    'peers_hostname': peers_hostname,
+                    'num_order_in_file': num_order_in_file
+                }
+                for peers_ip, peers_port, peers_hostname, num_order_in_file in results
+            ]
+            print(f"Peers sharing file '{file_name}':")
+            for peer in peers_info:
+                print(f"{file_name}_piece{peer['num_order_in_file']} - {peer['peers_hostname']} ({peer['peers_ip']}:{peer['peers_port']})")
+        else:
+            print(f"No peers found sharing the file '{file_name}'.")
+    except Exception as e:
+        print(f"An error occurred while discovering peers for file '{file_name}': {e}")
+        
 def ping_host(peers_hostname):
     cur.execute("SELECT address FROM client_files WHERE hostname = %s", (peers_hostname,))
     results = cur.fetchone()  
